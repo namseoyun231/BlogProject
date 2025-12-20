@@ -1,17 +1,27 @@
 import { NavLink } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
 
 export default function Header() {
+    const isLoggedIn = useAuthStore((s) => !!s.accessToken);
+
     return (
         <header className="page__header">
             <h1 className="page__logo">
+                {
+
+                }
                 <NavLink to="/" className="page__logo-link">
                     JBNU
                 </NavLink>
             </h1>
+
             <nav className="page__navigation">
                 <ul className="page__nav-list">
                     <li className="page__nav-item">
-                        <NavLink to="/write" className="page__nav-link">
+                        <NavLink
+                            to={isLoggedIn ? "/write" : "/auth"}
+                            className="page__nav-link"
+                        >
                             글쓰기
                         </NavLink>
                     </li>

@@ -1,3 +1,31 @@
+const path = require("path");
+const fs = require("fs");
+const fsp = fs.promises;
+
+const DATA_DIR = path.join(__dirname, "data");
+const USERS_FILE = path.join(DATA_DIR, "users.json");
+const POSTS_FILE = path.join(DATA_DIR, "posts.json");
+
+async function ensureDataFiles() {
+    await fsp.mkdir(DATA_DIR, { recursive: true });
+    if (!fs.existsSync(USERS_FILE)) await fsp.writeFile(USERS_FILE, "[]", "utf-8");
+    if (!fs.existsSync(POSTS_FILE)) await fsp.writeFile(POSTS_FILE, "[]", "utf-8");
+}
+
+async function loadJson(filePath, fallback) {
+    try {
+        const txt = await fsp.readFile(filePath, "utf-8");
+        return JSON.parse(txt);
+    } catch {
+        return fallback;
+    }
+}
+
+async function saveJson(filePath, data) {
+    await fsp.writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
+}
+
+
 // 필요한 라이브러리 불러오기
 const express = require("express"); // Express.js 모듈
 const jwt = require("jsonwebtoken"); // JSON Web Token 모듈
@@ -34,7 +62,7 @@ const ACCESS_TOKEN_SECRET = "i_love_sucoding"; // 액세스 토큰을 서명할 
 const REFRESH_TOKEN_SECRET = "i_like_sucoding"; // 리프레시 토큰을 서명할 때 사용
 
 // Mock database (가상의 데이터베이스, 실제로는 DB를 사용해야 함)
-const users = []; // { id, username, password, refreshToken } 형태로 사용자 정보를 저장
+let users = []; // { id, username, password, refreshToken } 형태로 사용자 정보를 저장
 
 // Middleware: 액세스 토큰 검증 미들웨어
 function authenticateToken(req, res, next) {
@@ -196,7 +224,7 @@ router.post("/register", async (req, res) => {
   res.status(201).json({ message: "회원가입이 완료되었습니다." });
 });
 // 블로그 게시글을 저장하는 Mock 데이터베이스
-const blogPosts = []; // { id, title, category, author, thumbnail, desc, regdate }
+let blogPosts = []; // { id, title, category, author, thumbnail, desc, regdate }
 
 // 블로그 게시글 목록 조회
 router.get("/posts", (req, res) => {
@@ -296,4 +324,13 @@ router.get("/posts/:id/related", (req, res) => {
 
 // 서버 실행
 app.use("/", router);
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+
+async function startServer() {
+    await ensureDataFiles();
+    users = await loadJson(USERS_FILE, []);
+    posts = await loadJson(POSTS_FILE, []);
+    app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+}
+
+startServer();
+

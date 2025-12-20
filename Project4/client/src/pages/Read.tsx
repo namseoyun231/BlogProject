@@ -1,6 +1,11 @@
-import { useParams } from "react-router-dom";
+import ReadArea from "../components/read/ReadArea";
+import RecommendationArea from "../components/read/RecommendationArea";
 
 export default function Read() {
-    const { id } = useParams();
-    return <main>Read: {id}</main>;
+    return (
+        <main className="page__main">
+            <ReadArea />
+            <RecommendationArea />
+        </main>
+    );
 }
