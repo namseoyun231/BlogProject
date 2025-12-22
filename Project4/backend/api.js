@@ -22,6 +22,11 @@ app.use(
     })
 );
 
+app.options("*", cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+}));
+
 // =====================
 // 1) JSON 파일 영구 저장 설정
 // =====================

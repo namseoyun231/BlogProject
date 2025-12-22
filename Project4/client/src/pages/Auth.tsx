@@ -3,67 +3,62 @@ import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../api/axiosInstance";
 import { useAuthStore } from "../store/authStore";
 
-type Mode = "login" | "signup";
+type Tab = "login" | "signup";
 
 export default function Auth() {
     const navigate = useNavigate();
     const setAuth = useAuthStore((s) => s.setAuth);
 
-    const [mode, setMode] = useState<Mode>("login");
+    const [tab, setTab] = useState<Tab>("login");
+    const isLogin = useMemo(() => tab === "login", [tab]);
 
-    const [email, setEmail] = useState("");
-    const [username, setUsername] = useState(""); // 회원가입용
-    const [password, setPassword] = useState("");
-    const [password2, setPassword2] = useState(""); // 회원가입 비밀번호 확인
+    const [loginEmail, setLoginEmail] = useState("");
+    const [loginPassword, setLoginPassword] = useState("");
 
-    const [message, setMessage] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
+    const [signupEmail, setSignupEmail] = useState("");
+    const [signupName, setSignupName] = useState("");
+    const [signupPassword, setSignupPassword] = useState("");
+    const [signupConfirm, setSignupConfirm] = useState("");
 
-    const isSignup = mode === "signup";
+    const [message, setMessage] = useState<string>("");
 
-    const canSubmit = useMemo(() => {
-        if (!email.trim() || !password.trim()) return false;
-        if (isSignup) {
-            if (!username.trim()) return false;
-            if (!password2.trim()) return false;
-            if (password !== password2) return false;
-        }
-        return !isLoading;
-    }, [email, password, password2, username, isSignup, isLoading]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setMessage("");
 
-        if (!canSubmit) {
-            setMessage("입력값을 확인해 주세요.");
+        try {
+            const { data } = await axiosInstance.post("/login", {
+                email: loginEmail,
+                password: loginPassword,
+            });
+
+            setAuth(data.user, data.accessToken);
+            navigate("/");
+        } catch (err: any) {
+            setMessage(err?.response?.data?.message ?? "로그인 실패");
+        }
+    };
+
+    const handleSignup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setMessage("");
+
+        if (signupPassword !== signupConfirm) {
+            setMessage("비밀번호가 일치하지 않습니다.");
             return;
         }
 
         try {
-            setIsLoading(true);
+            await axiosInstance.post("/register", {
+                email: signupEmail,
+                username: signupName,
+                password: signupPassword,
+            });
 
-            // 1) 회원가입이면 먼저 /register
-            if (isSignup) {
-                await axiosInstance.post("/register", { email, username, password });
-            }
-
-            // 2) 로그인 /login
-            const res = await axiosInstance.post("/login", { email, password });
-
-            // 서버가 { user, accessToken } 반환
-            const { user, accessToken } = res.data;
-            setAuth({ accessToken, user });
-
-            navigate("/");
+            setTab("login");
+            setMessage("회원가입 완료! 로그인 해주세요.");
         } catch (err: any) {
-            const msg =
-                err?.response?.data?.message ||
-                (typeof err?.response?.data === "string" ? err.response.data : null) ||
-                "요청 실패";
-            setMessage(String(msg));
-        } finally {
-            setIsLoading(false);
+            setMessage(err?.response?.data?.message ?? "회원가입 실패");
         }
     };
 
@@ -76,9 +71,9 @@ export default function Auth() {
                             type="button"
                             className={
                                 "page-auth__toggle-button " +
-                                (mode === "login" ? "page-auth__toggle-button--active" : "")
+                                (isLogin ? "page-auth__toggle-button--active" : "")
                             }
-                            onClick={() => setMode("login")}
+                            onClick={() => setTab("login")}
                         >
                             로그인
                         </button>
@@ -86,91 +81,91 @@ export default function Auth() {
                             type="button"
                             className={
                                 "page-auth__toggle-button " +
-                                (mode === "signup" ? "page-auth__toggle-button--active" : "")
+                                (!isLogin ? "page-auth__toggle-button--active" : "")
                             }
-                            onClick={() => setMode("signup")}
+                            onClick={() => setTab("signup")}
                         >
                             회원가입
                         </button>
                     </nav>
 
                     <div className="page-auth__form-section">
-                        <form className="auth-form auth-form--active" onSubmit={handleSubmit}>
-                            {/* 이메일 */}
-                            <label htmlFor="auth-email" className="a11y-hidden">
-                                이메일
-                            </label>
-                            <input
-                                id="auth-email"
-                                type="email"
-                                className="auth-form__input"
-                                placeholder="이메일"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                autoComplete="off"
-                            />
+                        {isLogin ? (
+                            <form className="auth-form auth-form--active" onSubmit={handleLogin}>
+                                <label className="a11y-hidden">이메일</label>
+                                <input
+                                    type="email"
+                                    className="auth-form__input"
+                                    placeholder="이메일"
+                                    value={loginEmail}
+                                    onChange={(e) => setLoginEmail(e.target.value)}
+                                    required
+                                />
 
-                            {/* 회원가입일 때만 이름 */}
-                            {isSignup && (
-                                <>
-                                    <label htmlFor="auth-username" className="a11y-hidden">
-                                        이름
-                                    </label>
-                                    <input
-                                        id="auth-username"
-                                        type="text"
-                                        className="auth-form__input"
-                                        placeholder="이름"
-                                        required
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        autoComplete="off"
-                                    />
-                                </>
-                            )}
+                                <label className="a11y-hidden">비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="auth-form__input"
+                                    placeholder="비밀번호"
+                                    value={loginPassword}
+                                    onChange={(e) => setLoginPassword(e.target.value)}
+                                    required
+                                />
 
-                            {/* 비밀번호 */}
-                            <label htmlFor="auth-password" className="a11y-hidden">
-                                비밀번호
-                            </label>
-                            <input
-                                id="auth-password"
-                                type="password"
-                                className="auth-form__input"
-                                placeholder="비밀번호"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
+                                <button type="submit" className="auth-form__submit">
+                                    로그인
+                                </button>
+                            </form>
+                        ) : (
+                            <form className="auth-form auth-form--active" onSubmit={handleSignup}>
+                                <label className="a11y-hidden">이메일</label>
+                                <input
+                                    type="email"
+                                    className="auth-form__input"
+                                    placeholder="이메일"
+                                    value={signupEmail}
+                                    onChange={(e) => setSignupEmail(e.target.value)}
+                                    required
+                                />
 
-                            {/* 회원가입일 때만 비밀번호 확인 */}
-                            {isSignup && (
-                                <>
-                                    <label htmlFor="auth-password2" className="a11y-hidden">
-                                        비밀번호 확인
-                                    </label>
-                                    <input
-                                        id="auth-password2"
-                                        type="password"
-                                        className="auth-form__input"
-                                        placeholder="비밀번호 확인"
-                                        required
-                                        value={password2}
-                                        onChange={(e) => setPassword2(e.target.value)}
-                                    />
-                                </>
-                            )}
+                                <label className="a11y-hidden">이름</label>
+                                <input
+                                    type="text"
+                                    className="auth-form__input"
+                                    placeholder="이름"
+                                    value={signupName}
+                                    onChange={(e) => setSignupName(e.target.value)}
+                                    required
+                                />
 
-                            <button type="submit" className="auth-form__submit" disabled={!canSubmit}>
-                                {isLoading ? "처리 중..." : isSignup ? "회원가입" : "로그인"}
-                            </button>
-                        </form>
+                                <label className="a11y-hidden">비밀번호</label>
+                                <input
+                                    type="password"
+                                    className="auth-form__input"
+                                    placeholder="비밀번호"
+                                    value={signupPassword}
+                                    onChange={(e) => setSignupPassword(e.target.value)}
+                                    required
+                                />
+
+                                <label className="a11y-hidden">비밀번호 확인</label>
+                                <input
+                                    type="password"
+                                    className="auth-form__input"
+                                    placeholder="비밀번호 확인"
+                                    value={signupConfirm}
+                                    onChange={(e) => setSignupConfirm(e.target.value)}
+                                    required
+                                />
+
+                                <button type="submit" className="auth-form__submit">
+                                    회원가입
+                                </button>
+                            </form>
+                        )}
                     </div>
 
-                    {message && (
-                        <p style={{ marginTop: 12, textAlign: "center" }}>{message}</p>
-                    )}
+                    {message ? <p style={{ marginTop: 12, textAlign: "center" }}>{message}</p> : null}
                 </section>
             </article>
         </main>
