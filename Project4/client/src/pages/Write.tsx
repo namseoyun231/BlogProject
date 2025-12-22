@@ -64,35 +64,58 @@ export default function Write() {
         try {
             setIsSubmitting(true);
 
+            let tokenToUse = accessToken;
+
+            try {
+                const tokenRes = await axiosInstance.post("/token", null, { withCredentials: true });
+                const newAccessToken = tokenRes.data?.accessToken;
+                if (newAccessToken) {
+                    tokenToUse = newAccessToken;
+                    useAuthStore.getState().setAuth({ accessToken: newAccessToken, user });
+                }
+            } catch {
+            }
+
             const res = await axiosInstance.post(
                 "/posts",
                 {
                     title,
                     category,
-                    username: writer,      // 화면의 작성자 입력값
-                    thumbnail: thumbnailBase64, // base64(DataURL)
+                    username: writer,
+                    thumbnail: thumbnailBase64,
                     desc,
                 },
                 {
                     headers: {
-                        Authorization: `Bearer ${accessToken}`,
+                        Authorization: `Bearer ${tokenToUse}`,
                     },
+                    withCredentials: true,
                 }
             );
+
             const newPostId = res.data?.id;
             if (newPostId) navigate(`/read/${newPostId}`);
             else navigate("/");
-
         } catch (err: any) {
+            const status = err?.response?.status;
             const msg =
                 err?.response?.data?.message ||
                 (typeof err?.response?.data === "string" ? err.response.data : null) ||
                 "글등록 실패(서버/토큰 확인)";
+
+            if (status === 401 || status === 403) {
+                setMessage("로그인이 만료됐어요. 다시 로그인해 주세요.");
+                useAuthStore.getState().clearAuth();
+                navigate("/auth", { replace: true });
+                return;
+            }
+
             setMessage(String(msg));
         } finally {
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <main className="page__main">

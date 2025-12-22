@@ -53,7 +53,7 @@ export default function Auth() {
 
             // 서버가 { user, accessToken } 반환
             const { user, accessToken } = res.data;
-            setAuth({ user, accessToken });
+            setAuth({ accessToken, user });
 
             navigate("/");
         } catch (err: any) {
